@@ -46,6 +46,7 @@ import {
 } from '../lib/firebase';
 import { COMPANY_INFO, PORTFOLIO_LIST } from '../data/portfolioData';
 import { formatKoreanWon } from '../utils/calculator';
+import { optimizeImageFile, FALLBACK_SOLAR_IMAGE } from '../utils/imageOptimizer';
 
 interface AdminDashboardProps {
   isOpen: boolean;
@@ -113,6 +114,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
   });
   const [portfolioFormError, setPortfolioFormError] = useState<string>('');
   const [portfolioSaveSuccess, setPortfolioSaveSuccess] = useState<string>('');
+  const [isCompressing, setIsCompressing] = useState<boolean>(false);
+  const [compressInfo, setCompressInfo] = useState<string>('');
 
   const getStoredPassword = () => {
     return localStorage.getItem(ADMIN_PW_STORAGE_KEY) || DEFAULT_PASSWORD;
@@ -250,6 +253,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
       imageUrl: 'https://images.unsplash.com/photo-1509391365360-2e959784a276?auto=format&fit=crop&w=1600&q=85'
     });
     setPortfolioFormError('');
+    setCompressInfo('');
     setPortfolioModalOpen(true);
   };
 
@@ -264,25 +268,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
       imageUrl: item.imageUrl
     });
     setPortfolioFormError('');
+    setCompressInfo('');
     setPortfolioModalOpen(true);
   };
 
-  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) {
       setPortfolioFormError('이미지 파일(JPG, PNG, WebP 등)만 업로드할 수 있습니다.');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64 = event.target?.result as string;
-      if (base64) {
-        setPortfolioForm(prev => ({ ...prev, imageUrl: base64 }));
-        setPortfolioFormError('');
-      }
-    };
-    reader.readAsDataURL(file);
+
+    setIsCompressing(true);
+    setPortfolioFormError('');
+    setCompressInfo('');
+
+    try {
+      const origSizeMb = (file.size / (1024 * 1024)).toFixed(1);
+      const optimizedBase64 = await optimizeImageFile(file, 1600, 1200, 0.85);
+      const approxKb = Math.round((optimizedBase64.length * 3) / 4 / 1024);
+      
+      setPortfolioForm(prev => ({ ...prev, imageUrl: optimizedBase64 }));
+      setCompressInfo(`고화질 압축 최적화 완료: ${origSizeMb}MB → ${approxKb}KB (웹 표시 완벽 지원)`);
+    } catch (err: any) {
+      setPortfolioFormError(err?.message || '사진 처리 중 오류가 발생했습니다.');
+    } finally {
+      setIsCompressing(false);
+    }
   };
 
   const handleSavePortfolioForm = async (e: React.FormEvent) => {
@@ -848,10 +861,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
                       </div>
 
                       {/* Photo Thumbnail */}
-                      <div className="relative aspect-16/10 overflow-hidden bg-slate-900">
+                      <div className="relative aspect-16/10 overflow-hidden bg-slate-800">
                         <img
                           src={item.imageUrl}
                           alt={item.capacity}
+                          referrerPolicy="no-referrer"
+                          loading="lazy"
+                          onError={(e) => {
+                            const imgEl = e.currentTarget;
+                            if (imgEl.src !== FALLBACK_SOLAR_IMAGE) {
+                              imgEl.src = FALLBACK_SOLAR_IMAGE;
+                            }
+                          }}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                         <div className="absolute inset-0 bg-linear-to-t from-black/70 via-transparent to-transparent pointer-events-none" />
@@ -1204,17 +1225,35 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
                   <div className="grid sm:grid-cols-2 gap-4 items-start">
                     {/* File Upload Box */}
                     <div className="space-y-2">
-                      <label className="border-2 border-dashed border-amber-300 hover:border-amber-500 bg-amber-50/40 hover:bg-amber-50/80 rounded-2xl p-4 flex flex-col items-center justify-center text-center cursor-pointer transition-all">
-                        <Upload className="w-8 h-8 text-amber-600 mb-1 animate-bounce" />
-                        <span className="font-bold text-slate-900 text-xs">내 컴퓨터 사진 파일 선택</span>
-                        <span className="text-[10px] text-slate-500 mt-0.5">JPG, PNG, WebP 지원 (자동 최적화)</span>
+                      <label className="border-2 border-dashed border-amber-300 hover:border-amber-500 bg-amber-50/40 hover:bg-amber-50/80 rounded-2xl p-4 flex flex-col items-center justify-center text-center cursor-pointer transition-all relative">
+                        {isCompressing ? (
+                          <div className="flex flex-col items-center justify-center py-2">
+                            <Sparkles className="w-8 h-8 text-amber-600 mb-1 animate-spin" />
+                            <span className="font-black text-slate-900 text-xs">고화질 사진 최적화 압축 중...</span>
+                            <span className="text-[10px] text-slate-500 mt-0.5">웹에서 빠르고 선명하게 표시되도록 처리합니다</span>
+                          </div>
+                        ) : (
+                          <>
+                            <Upload className="w-8 h-8 text-amber-600 mb-1 animate-bounce" />
+                            <span className="font-bold text-slate-900 text-xs">내 컴퓨터 사진 파일 선택</span>
+                            <span className="text-[10px] text-slate-500 mt-0.5">JPG, PNG, WebP 지원 (자동 고화질 압축)</span>
+                          </>
+                        )}
                         <input
                           type="file"
                           accept="image/*"
+                          disabled={isCompressing}
                           onChange={handleImageFileChange}
                           className="hidden"
                         />
                       </label>
+
+                      {compressInfo && (
+                        <div className="p-2 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-[11px] font-bold flex items-center gap-1.5 animate-in fade-in">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <span>{compressInfo}</span>
+                        </div>
+                      )}
 
                       <div className="text-[11px] text-slate-500 text-center font-bold">또는 이미지 URL 직접 입력:</div>
                       
@@ -1230,20 +1269,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
                     {/* Preview Box */}
                     <div>
                       <div className="text-[11px] font-bold text-slate-600 mb-1">실시간 카드 미리보기</div>
-                      <div className="relative aspect-16/10 rounded-2xl overflow-hidden bg-slate-900 border border-slate-200 shadow-md">
+                      <div className="relative aspect-16/10 rounded-2xl overflow-hidden bg-slate-800 border border-slate-200 shadow-md">
                         {portfolioForm.imageUrl ? (
                           <img
                             src={portfolioForm.imageUrl}
                             alt="Preview"
+                            referrerPolicy="no-referrer"
+                            onError={(e) => {
+                              const imgEl = e.currentTarget;
+                              if (imgEl.src !== FALLBACK_SOLAR_IMAGE) {
+                                imgEl.src = FALLBACK_SOLAR_IMAGE;
+                              }
+                            }}
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-slate-500">
+                          <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs">
                             사진을 선택하면 미리보기가 표시됩니다.
                           </div>
                         )}
-                        <div className="absolute bottom-2 left-2 bg-amber-400 text-slate-950 font-black text-xs px-2.5 py-1 rounded-md shadow-xs">
-                          {portfolioForm.capacity || '100.00 kW'}
+                        <div className="absolute bottom-2 left-2 bg-amber-400 text-slate-950 font-black text-xs px-2.5 py-1 rounded-md shadow-xs flex items-center gap-1">
+                          <Zap className="w-3 h-3 fill-slate-950" />
+                          <span>{portfolioForm.capacity || '100.00 kW'}</span>
                         </div>
                       </div>
                     </div>

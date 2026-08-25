@@ -146,6 +146,7 @@ export async function blockSlot(date: string, time: string, reason = '상담 마
 // Portfolio Items Management (Max 6 Items)
 // ==========================================
 export const PORTFOLIO_STORAGE_KEY = 'ecoshine_portfolio_custom_items';
+const DEFAULT_FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1509391365360-2e959784a276?auto=format&fit=crop&w=1600&q=85';
 
 export function getLocalPortfolioItems(): PortfolioItem[] {
   try {
@@ -153,7 +154,12 @@ export function getLocalPortfolioItems(): PortfolioItem[] {
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        return parsed.map((item, idx) => ({
+          ...item,
+          imageUrl: (item.imageUrl && item.imageUrl.length > 10) 
+            ? item.imageUrl 
+            : (PORTFOLIO_LIST[idx]?.imageUrl || DEFAULT_FALLBACK_IMAGE)
+        }));
       }
     }
   } catch {

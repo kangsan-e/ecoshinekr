@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Zap, ArrowRight, CheckCircle2, Maximize2, X, MapPin, Building, ShieldCheck, Upload, Image as ImageIcon, Sparkles } from 'lucide-react';
 import { PORTFOLIO_LIST } from '../data/portfolioData';
 import { subscribeToPortfolioItems, savePortfolioItem } from '../lib/firebase';
+import { optimizeImageFile, FALLBACK_SOLAR_IMAGE } from '../utils/imageOptimizer';
 import type { PortfolioItem } from '../types';
 
 interface PortfolioGalleryProps {
@@ -14,6 +15,7 @@ export const PortfolioGallery: React.FC<PortfolioGalleryProps> = ({ onOpenBookin
   const [items, setItems] = useState<PortfolioItem[]>(PORTFOLIO_LIST);
   const [selectedItem, setSelectedItem] = useState<PortfolioItem | null>(null);
   const [customImages, setCustomImages] = useState<Record<string, string>>({});
+  const [isProcessingImage, setIsProcessingImage] = useState<boolean>(false);
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(() => {
     try {
       return sessionStorage.getItem('ecoshine_admin_logged_in') === 'true';
@@ -85,28 +87,32 @@ export const PortfolioGallery: React.FC<PortfolioGalleryProps> = ({ onOpenBookin
 
   const [dragOverId, setDragOverId] = useState<string | null>(null);
 
-  const processFile = (id: string, file: File) => {
+  const processFile = async (id: string, file: File) => {
     if (!file.type.startsWith('image/')) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64 = event.target?.result as string;
-      if (base64) {
-        const updated = { ...customImages, [id]: base64 };
+    setIsProcessingImage(true);
+    try {
+      // Automatically compress and resize to optimized high-res JPEG under 200KB
+      const optimizedBase64 = await optimizeImageFile(file, 1600, 1200, 0.85);
+      if (optimizedBase64) {
+        const updated = { ...customImages, [id]: optimizedBase64 };
         setCustomImages(updated);
         try {
           localStorage.setItem(CUSTOM_IMAGES_STORAGE_KEY, JSON.stringify(updated));
         } catch {
-          // localStorage full or restricted
+          // ignore
         }
 
         // Also sync to portfolio item object directly
         const targetItem = items.find((it) => it.id === id);
         if (targetItem) {
-          savePortfolioItem({ ...targetItem, imageUrl: base64 });
+          await savePortfolioItem({ ...targetItem, imageUrl: optimizedBase64 });
         }
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.warn('Image optimization failed:', err);
+    } finally {
+      setIsProcessingImage(false);
+    }
   };
 
   const handleImageUpload = (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -125,7 +131,13 @@ export const PortfolioGallery: React.FC<PortfolioGalleryProps> = ({ onOpenBookin
   };
 
   const getItemImage = (item: PortfolioItem) => {
-    return customImages[item.id] || item.imageUrl;
+    if (item.imageUrl && item.imageUrl.trim().length > 10) {
+      return item.imageUrl;
+    }
+    if (customImages[item.id] && customImages[item.id].trim().length > 10) {
+      return customImages[item.id];
+    }
+    return FALLBACK_SOLAR_IMAGE;
   };
 
   return (
@@ -172,11 +184,18 @@ export const PortfolioGallery: React.FC<PortfolioGalleryProps> = ({ onOpenBookin
                 }`}
               >
                 {/* Real Photo with overlay & prominent kW */}
-                <div className="relative aspect-4/3 overflow-hidden bg-slate-900">
+                <div className="relative aspect-4/3 overflow-hidden bg-slate-800">
                   <img
                     src={currentImg}
                     alt={`${item.capacity} 시공 실적`}
                     referrerPolicy="no-referrer"
+                    loading="lazy"
+                    onError={(e) => {
+                      const imgEl = e.currentTarget;
+                      if (imgEl.src !== FALLBACK_SOLAR_IMAGE) {
+                        imgEl.src = FALLBACK_SOLAR_IMAGE;
+                      }
+                    }}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                   
@@ -185,6 +204,13 @@ export const PortfolioGallery: React.FC<PortfolioGalleryProps> = ({ onOpenBookin
                     <div className="absolute inset-0 bg-amber-500/80 flex flex-col items-center justify-center text-slate-950 font-black text-sm z-20 gap-2 backdrop-blur-xs">
                       <Upload className="w-8 h-8 animate-bounce" />
                       <span>여기에 사진 파일을 놓으세요</span>
+                    </div>
+                  )}
+
+                  {isProcessingImage && (
+                    <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-amber-300 font-bold text-xs z-30 gap-2 backdrop-blur-xs">
+                      <Sparkles className="w-6 h-6 animate-spin text-amber-400" />
+                      <span>사진 최적화 처리 중...</span>
                     </div>
                   )}
 
@@ -265,6 +291,13 @@ export const PortfolioGallery: React.FC<PortfolioGalleryProps> = ({ onOpenBookin
                   <img
                     src={getItemImage(selectedItem)}
                     alt={selectedItem.capacity}
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      const imgEl = e.currentTarget;
+                      if (imgEl.src !== FALLBACK_SOLAR_IMAGE) {
+                        imgEl.src = FALLBACK_SOLAR_IMAGE;
+                      }
+                    }}
                     className="w-full h-full object-cover"
                   />
                   
