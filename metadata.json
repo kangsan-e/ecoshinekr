@@ -2,5 +2,7 @@
   "name": "에코샤인 - 공장 지붕 태양광 EPC & 상담예약",
   "description": "공장 지붕 태양광 발전소 설치 가능 여부 간편 진단, 예상 수익 계산, 실시간 상담예약 및 관리자 시스템을 제공하는 (주)에코샤인 공식 영업 랜딩페이지입니다.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

@@ -12,6 +12,32 @@ const CUSTOM_IMAGES_STORAGE_KEY = 'ecoshine_portfolio_custom_images';
 export const PortfolioGallery: React.FC<PortfolioGalleryProps> = ({ onOpenBooking }) => {
   const [selectedItem, setSelectedItem] = useState<PortfolioItem | null>(null);
   const [customImages, setCustomImages] = useState<Record<string, string>>({});
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem('ecoshine_admin_logged_in') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  // Check admin login state reactively
+  useEffect(() => {
+    const checkAdmin = () => {
+      try {
+        setIsAdminLoggedIn(sessionStorage.getItem('ecoshine_admin_logged_in') === 'true');
+      } catch {
+        setIsAdminLoggedIn(false);
+      }
+    };
+
+    window.addEventListener('ecoshine_admin_auth_changed', checkAdmin);
+    window.addEventListener('storage', checkAdmin);
+
+    return () => {
+      window.removeEventListener('ecoshine_admin_auth_changed', checkAdmin);
+      window.removeEventListener('storage', checkAdmin);
+    };
+  }, []);
 
   // Load custom user-uploaded images from localStorage if present
   useEffect(() => {
@@ -151,17 +177,19 @@ export const PortfolioGallery: React.FC<PortfolioGalleryProps> = ({ onOpenBookin
                     className="w-full h-full object-cover"
                   />
                   
-                  {/* Photo Replacement Action */}
-                  <label className="absolute bottom-3 right-3 bg-black/75 hover:bg-black/90 text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer backdrop-blur-xs transition-all border border-white/20">
-                    <Upload className="w-3.5 h-3.5 text-amber-300" />
-                    <span>내 원본 사진 파일로 교체 ({selectedItem.capacity})</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => handleImageUpload(selectedItem.id, e)}
-                    />
-                  </label>
+                  {/* Photo Replacement Action (Only visible when Admin is logged in) */}
+                  {isAdminLoggedIn && (
+                    <label className="absolute bottom-3 right-3 bg-black/80 hover:bg-black/95 text-amber-300 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer backdrop-blur-xs transition-all border border-amber-400/40 shadow-lg animate-in fade-in">
+                      <Upload className="w-4 h-4 text-amber-300" />
+                      <span>[관리자] 사진 올리기·교체 ({selectedItem.capacity})</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => handleImageUpload(selectedItem.id, e)}
+                      />
+                    </label>
+                  )}
                 </div>
 
                 <div className="grid sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200/80 text-sm">
@@ -182,16 +210,22 @@ export const PortfolioGallery: React.FC<PortfolioGalleryProps> = ({ onOpenBookin
 
               {/* Modal Footer CTA */}
               <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-3">
-                <label className="text-xs text-slate-500 font-bold flex items-center gap-1.5 cursor-pointer hover:text-amber-800">
-                  <ImageIcon className="w-4 h-4 text-amber-600" />
-                  <span>사진 파일 변경하기</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => handleImageUpload(selectedItem.id, e)}
-                  />
-                </label>
+                {isAdminLoggedIn ? (
+                  <label className="text-xs text-amber-900 bg-amber-100/90 hover:bg-amber-200 px-3.5 py-2 rounded-xl border border-amber-300 font-black flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs">
+                    <ImageIcon className="w-4 h-4 text-amber-700" />
+                    <span>[관리자] 사진 변경하기</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleImageUpload(selectedItem.id, e)}
+                    />
+                  </label>
+                ) : (
+                  <div className="text-xs text-slate-500 font-medium">
+                    ※ (주)에코샤인 실제 준공 포트폴리오
+                  </div>
+                )}
                 
                 <div className="flex items-center gap-3">
                   <button

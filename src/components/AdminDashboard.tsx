@@ -42,7 +42,13 @@ const ADMIN_PW_STORAGE_KEY = 'ecoshine_admin_custom_pw';
 const DEFAULT_PASSWORD = 'ecoshine2026!';
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem('ecoshine_admin_logged_in') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [password, setPassword] = useState<string>('');
   const [authError, setAuthError] = useState<string>('');
 
@@ -90,9 +96,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
     const correctPassword = getStoredPassword();
     if (password === correctPassword || password === 'ecoshine2026!' || password === 'admin') {
       setIsAuthenticated(true);
+      try {
+        sessionStorage.setItem('ecoshine_admin_logged_in', 'true');
+        window.dispatchEvent(new Event('ecoshine_admin_auth_changed'));
+      } catch {
+        // ignore
+      }
       setAuthError('');
     } else {
       setAuthError('관리자 비밀번호가 일치하지 않습니다.');
+    }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    try {
+      sessionStorage.removeItem('ecoshine_admin_logged_in');
+      window.dispatchEvent(new Event('ecoshine_admin_auth_changed'));
+    } catch {
+      // ignore
     }
   };
 
@@ -232,12 +254,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
-          >
-            <X className="w-6 h-6" />
-          </button>
+          <div className="flex items-center gap-2">
+            {isAuthenticated && (
+              <button
+                onClick={handleLogout}
+                className="px-3 py-1.5 text-xs font-bold text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer border border-slate-200"
+              >
+                관리자 로그아웃
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
         </div>
 
         {/* Login Screen if not authenticated */}
