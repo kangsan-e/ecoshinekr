@@ -131,11 +131,11 @@ export const PortfolioGallery: React.FC<PortfolioGalleryProps> = ({ onOpenBookin
   };
 
   const getItemImage = (item: PortfolioItem) => {
-    if (item.imageUrl && item.imageUrl.trim().length > 10) {
-      return item.imageUrl;
-    }
     if (customImages[item.id] && customImages[item.id].trim().length > 10) {
       return customImages[item.id];
+    }
+    if (item.imageUrl && item.imageUrl.trim().length > 10) {
+      return item.imageUrl;
     }
     return FALLBACK_SOLAR_IMAGE;
   };
