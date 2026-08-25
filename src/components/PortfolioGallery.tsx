@@ -51,10 +51,10 @@ export const PortfolioGallery: React.FC<PortfolioGalleryProps> = ({ onOpenBookin
     }
   }, []);
 
-  const handleImageUpload = (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
 
+  const processFile = (id: string, file: File) => {
+    if (!file.type.startsWith('image/')) return;
     const reader = new FileReader();
     reader.onload = (event) => {
       const base64 = event.target?.result as string;
@@ -69,6 +69,21 @@ export const PortfolioGallery: React.FC<PortfolioGalleryProps> = ({ onOpenBookin
       }
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleImageUpload = (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    processFile(id, file);
+  };
+
+  const handleCardDrop = (id: string, e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOverId(null);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processFile(id, file);
+    }
   };
 
   const getItemImage = (item: PortfolioItem) => {
@@ -97,11 +112,20 @@ export const PortfolioGallery: React.FC<PortfolioGalleryProps> = ({ onOpenBookin
         <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           {PORTFOLIO_LIST.map((item) => {
             const currentImg = getItemImage(item);
+            const isDraggingThis = dragOverId === item.id;
             return (
               <div
                 key={item.id}
                 onClick={() => setSelectedItem(item)}
-                className="bg-white rounded-2xl overflow-hidden border border-amber-200/80 shadow-md hover:shadow-xl transition-all duration-300 flex flex-col group hover:-translate-y-1 cursor-pointer"
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragOverId(item.id);
+                }}
+                onDragLeave={() => setDragOverId(null)}
+                onDrop={(e) => handleCardDrop(item.id, e)}
+                className={`bg-white rounded-2xl overflow-hidden border shadow-md hover:shadow-xl transition-all duration-300 flex flex-col group hover:-translate-y-1 cursor-pointer ${
+                  isDraggingThis ? 'ring-4 ring-amber-400 border-amber-500 scale-[1.02]' : 'border-amber-200/80'
+                }`}
               >
                 {/* Real Photo with overlay & prominent kW */}
                 <div className="relative aspect-4/3 overflow-hidden bg-slate-900">
@@ -112,6 +136,14 @@ export const PortfolioGallery: React.FC<PortfolioGalleryProps> = ({ onOpenBookin
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                   
+                  {/* Drag overlay indicator */}
+                  {isDraggingThis && (
+                    <div className="absolute inset-0 bg-amber-500/80 flex flex-col items-center justify-center text-slate-950 font-black text-sm z-20 gap-2 backdrop-blur-xs">
+                      <Upload className="w-8 h-8 animate-bounce" />
+                      <span>여기에 사진 파일을 놓으세요</span>
+                    </div>
+                  )}
+
                   {/* Gradient shadow for contrast */}
                   <div className="absolute inset-0 bg-linear-to-t from-black/75 via-transparent to-black/20 pointer-events-none" />
                   
@@ -170,13 +202,35 @@ export const PortfolioGallery: React.FC<PortfolioGalleryProps> = ({ onOpenBookin
 
               {/* Modal Content - High-Res Real Photo */}
               <div className="p-6 overflow-y-auto space-y-6">
-                <div className="relative aspect-16/10 rounded-2xl overflow-hidden shadow-md border border-slate-200 bg-slate-950 group">
+                <div 
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDragOverId(`modal-${selectedItem.id}`);
+                  }}
+                  onDragLeave={() => setDragOverId(null)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragOverId(null);
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) processFile(selectedItem.id, file);
+                  }}
+                  className={`relative aspect-16/10 rounded-2xl overflow-hidden shadow-md border bg-slate-950 group ${
+                    dragOverId === `modal-${selectedItem.id}` ? 'ring-4 ring-amber-400 border-amber-500' : 'border-slate-200'
+                  }`}
+                >
                   <img
                     src={getItemImage(selectedItem)}
                     alt={selectedItem.capacity}
                     className="w-full h-full object-cover"
                   />
                   
+                  {dragOverId === `modal-${selectedItem.id}` && (
+                    <div className="absolute inset-0 bg-amber-500/80 flex flex-col items-center justify-center text-slate-950 font-black text-base z-20 gap-2 backdrop-blur-xs">
+                      <Upload className="w-10 h-10 animate-bounce" />
+                      <span>여기에 새 사진 파일을 놓아 즉시 교체하세요</span>
+                    </div>
+                  )}
+
                   {/* Photo Replacement Action (Only visible when Admin is logged in) */}
                   {isAdminLoggedIn && (
                     <label className="absolute bottom-3 right-3 bg-black/80 hover:bg-black/95 text-amber-300 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer backdrop-blur-xs transition-all border border-amber-400/40 shadow-lg animate-in fade-in">
