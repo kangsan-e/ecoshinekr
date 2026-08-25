@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Zap, ArrowRight, CheckCircle2, Maximize2, X, MapPin, Building, ShieldCheck, Upload, Image as ImageIcon } from 'lucide-react';
+import { Zap, ArrowRight, CheckCircle2, Maximize2, X, MapPin, Building, ShieldCheck, Upload, Image as ImageIcon, Sparkles } from 'lucide-react';
 import { PORTFOLIO_LIST } from '../data/portfolioData';
+import { subscribeToPortfolioItems, savePortfolioItem } from '../lib/firebase';
 import type { PortfolioItem } from '../types';
 
 interface PortfolioGalleryProps {
@@ -10,6 +11,7 @@ interface PortfolioGalleryProps {
 const CUSTOM_IMAGES_STORAGE_KEY = 'ecoshine_portfolio_custom_images';
 
 export const PortfolioGallery: React.FC<PortfolioGalleryProps> = ({ onOpenBooking }) => {
+  const [items, setItems] = useState<PortfolioItem[]>(PORTFOLIO_LIST);
   const [selectedItem, setSelectedItem] = useState<PortfolioItem | null>(null);
   const [customImages, setCustomImages] = useState<Record<string, string>>({});
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(() => {
@@ -19,6 +21,36 @@ export const PortfolioGallery: React.FC<PortfolioGalleryProps> = ({ onOpenBookin
       return false;
     }
   });
+
+  // Subscribe to dynamic portfolio items
+  useEffect(() => {
+    const unsubscribe = subscribeToPortfolioItems((list) => {
+      if (list && list.length > 0) {
+        setItems(list.slice(0, 6)); // ensure max 6 items
+      }
+    });
+
+    const handlePortfolioEvent = () => {
+      try {
+        const saved = localStorage.getItem('ecoshine_portfolio_custom_items');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setItems(parsed.slice(0, 6));
+          }
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    window.addEventListener('ecoshine_portfolio_changed', handlePortfolioEvent);
+
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+      window.removeEventListener('ecoshine_portfolio_changed', handlePortfolioEvent);
+    };
+  }, []);
 
   // Check admin login state reactively
   useEffect(() => {
@@ -66,6 +98,12 @@ export const PortfolioGallery: React.FC<PortfolioGalleryProps> = ({ onOpenBookin
         } catch {
           // localStorage full or restricted
         }
+
+        // Also sync to portfolio item object directly
+        const targetItem = items.find((it) => it.id === id);
+        if (targetItem) {
+          savePortfolioItem({ ...targetItem, imageUrl: base64 });
+        }
       }
     };
     reader.readAsDataURL(file);
@@ -98,7 +136,7 @@ export const PortfolioGallery: React.FC<PortfolioGalleryProps> = ({ onOpenBookin
         <div className="text-center max-w-3xl mx-auto">
           <span className="inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-widest text-amber-900 bg-amber-100 px-3.5 py-1.5 rounded-full border border-amber-200 shadow-xs">
             <Zap className="w-3.5 h-3.5 text-amber-600 fill-amber-500" />
-            <span>실제 시공 실적 (100~300kW)</span>
+            <span>실제 시공 실적 (100~300kW+)</span>
           </span>
           <h2 className="mt-4 text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
             (주)에코샤인 실제 지붕 시공 실적
@@ -108,9 +146,15 @@ export const PortfolioGallery: React.FC<PortfolioGalleryProps> = ({ onOpenBookin
           </p>
         </div>
 
-        {/* 3 Portfolio Cards Grid: Photo + kW ONLY as requested */}
-        <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-          {PORTFOLIO_LIST.map((item) => {
+        {/* Portfolio Cards Grid: 1 to 6 items */}
+        <div className={`mt-12 grid gap-6 sm:gap-8 ${
+          items.length <= 2 
+            ? 'sm:grid-cols-2 max-w-4xl mx-auto' 
+            : items.length === 4 
+              ? 'sm:grid-cols-2 lg:grid-cols-2 max-w-5xl mx-auto' 
+              : 'sm:grid-cols-2 lg:grid-cols-3'
+        }`}>
+          {items.map((item) => {
             const currentImg = getItemImage(item);
             const isDraggingThis = dragOverId === item.id;
             return (
@@ -164,11 +208,11 @@ export const PortfolioGallery: React.FC<PortfolioGalleryProps> = ({ onOpenBookin
 
                 {/* Minimal Clean Footer Bar */}
                 <div className="p-4 bg-amber-50/50 border-t border-amber-100 flex items-center justify-between text-xs">
-                  <span className="font-bold text-slate-700 flex items-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4 text-amber-600" />
-                    <span>{item.roofType}</span>
+                  <span className="font-bold text-slate-700 flex items-center gap-1.5 truncate max-w-[200px]" title={item.roofType}>
+                    <CheckCircle2 className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span className="truncate">{item.roofType || '공장 지붕 시공'}</span>
                   </span>
-                  <span className="text-amber-900 font-black bg-white px-2.5 py-1 rounded-md border border-amber-200 shadow-2xs">
+                  <span className="text-amber-900 font-black bg-white px-2.5 py-1 rounded-md border border-amber-200 shadow-2xs shrink-0">
                     시공완료
                   </span>
                 </div>
@@ -249,12 +293,17 @@ export const PortfolioGallery: React.FC<PortfolioGalleryProps> = ({ onOpenBookin
                 <div className="grid sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200/80 text-sm">
                   <div className="flex items-center gap-2.5 text-slate-700">
                     <MapPin className="w-4 h-4 text-amber-600 shrink-0" />
-                    <span><strong>위치:</strong> {selectedItem.location}</span>
+                    <span><strong>위치:</strong> {selectedItem.location || '국내 산업단지 공장'}</span>
                   </div>
                   <div className="flex items-center gap-2.5 text-slate-700">
                     <Building className="w-4 h-4 text-amber-600 shrink-0" />
-                    <span><strong>지붕 형태:</strong> {selectedItem.roofType}</span>
+                    <span><strong>지붕 형태:</strong> {selectedItem.roofType || '공장 지붕'}</span>
                   </div>
+                  {selectedItem.description && (
+                    <div className="sm:col-span-2 text-xs text-slate-600 bg-white p-3 rounded-xl border border-slate-200">
+                      <strong>현장 개요:</strong> {selectedItem.description}
+                    </div>
+                  )}
                   <div className="sm:col-span-2 flex items-center gap-2 text-emerald-700 font-bold bg-emerald-50 p-3 rounded-xl border border-emerald-200">
                     <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
                     <span>특허 무타공/밀착 누수방지 브라켓 & 포스코 POS-MAC 100% 적용 완료</span>
@@ -320,4 +369,5 @@ export const PortfolioGallery: React.FC<PortfolioGalleryProps> = ({ onOpenBookin
     </section>
   );
 };
+
 

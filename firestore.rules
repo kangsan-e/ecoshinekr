@@ -28,5 +28,11 @@ service cloud.firestore {
       allow read: if true;
       allow write: if true;
     }
+
+    // Portfolio items (Admin editable, up to 6 items)
+    match /portfolio_items/{itemId} {
+      allow read: if true;
+      allow write: if true;
+    }
   }
 }

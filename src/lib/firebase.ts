@@ -5,6 +5,7 @@ import {
   addDoc, 
   getDocs, 
   doc, 
+  setDoc,
   updateDoc, 
   deleteDoc, 
   query, 
@@ -20,7 +21,8 @@ import {
   onAuthStateChanged,
   User
 } from 'firebase/auth';
-import type { ConsultationRequest, BlockedSlot } from '../types';
+import type { ConsultationRequest, BlockedSlot, PortfolioItem } from '../types';
+import { PORTFOLIO_LIST } from '../data/portfolioData';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
@@ -139,3 +141,123 @@ export async function blockSlot(date: string, time: string, reason = '상담 마
     createdAt: new Date().toISOString()
   });
 }
+
+// ==========================================
+// Portfolio Items Management (Max 6 Items)
+// ==========================================
+export const PORTFOLIO_STORAGE_KEY = 'ecoshine_portfolio_custom_items';
+
+export function getLocalPortfolioItems(): PortfolioItem[] {
+  try {
+    const saved = localStorage.getItem(PORTFOLIO_STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch {
+    // fallback
+  }
+  return PORTFOLIO_LIST;
+}
+
+export function subscribeToPortfolioItems(callback: (list: PortfolioItem[]) => void) {
+  // First emit local items
+  const initialLocal = getLocalPortfolioItems();
+  callback(initialLocal);
+
+  const q = query(collection(db, 'portfolio_items'), orderBy('order', 'asc'));
+  return onSnapshot(q, (snap) => {
+    if (!snap.empty) {
+      const list: PortfolioItem[] = [];
+      snap.forEach((d) => {
+        list.push({ id: d.id, ...(d.data() as Omit<PortfolioItem, 'id'>) });
+      });
+      // Sort by order ascending, then by capacity
+      list.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      try {
+        localStorage.setItem(PORTFOLIO_STORAGE_KEY, JSON.stringify(list));
+      } catch {
+        // ignore
+      }
+      callback(list);
+    } else {
+      // If Firestore collection is empty, provide local fallback
+      const local = getLocalPortfolioItems();
+      callback(local);
+    }
+  }, (error) => {
+    console.warn('Portfolio subscription error:', error);
+    const local = getLocalPortfolioItems();
+    callback(local);
+  });
+}
+
+export async function savePortfolioItem(item: PortfolioItem): Promise<void> {
+  const docRef = doc(db, 'portfolio_items', item.id);
+  const data = {
+    ...item,
+    updatedAt: new Date().toISOString()
+  };
+  
+  // Also update local storage immediately for fast reactive UI
+  const current = getLocalPortfolioItems();
+  const index = current.findIndex((p) => p.id === item.id);
+  let updatedList: PortfolioItem[];
+  if (index >= 0) {
+    updatedList = current.map((p) => (p.id === item.id ? item : p));
+  } else {
+    updatedList = [...current, item];
+  }
+  try {
+    localStorage.setItem(PORTFOLIO_STORAGE_KEY, JSON.stringify(updatedList));
+    window.dispatchEvent(new Event('ecoshine_portfolio_changed'));
+  } catch {
+    // ignore
+  }
+
+  try {
+    await setDoc(docRef, data, { merge: true });
+  } catch (err) {
+    console.warn('Failed to sync portfolio item to firestore, saved locally:', err);
+  }
+}
+
+export async function deletePortfolioItem(id: string): Promise<void> {
+  // Update local storage first
+  const current = getLocalPortfolioItems();
+  const updatedList = current.filter((p) => p.id !== id);
+  try {
+    localStorage.setItem(PORTFOLIO_STORAGE_KEY, JSON.stringify(updatedList));
+    window.dispatchEvent(new Event('ecoshine_portfolio_changed'));
+  } catch {
+    // ignore
+  }
+
+  try {
+    const docRef = doc(db, 'portfolio_items', id);
+    await deleteDoc(docRef);
+  } catch (err) {
+    console.warn('Failed to delete portfolio item from firestore:', err);
+  }
+}
+
+export async function saveAllPortfolioItems(items: PortfolioItem[]): Promise<void> {
+  try {
+    localStorage.setItem(PORTFOLIO_STORAGE_KEY, JSON.stringify(items));
+    window.dispatchEvent(new Event('ecoshine_portfolio_changed'));
+  } catch {
+    // ignore
+  }
+
+  try {
+    for (const item of items) {
+      const docRef = doc(db, 'portfolio_items', item.id);
+      await setDoc(docRef, { ...item, updatedAt: new Date().toISOString() }, { merge: true });
+    }
+  } catch (err) {
+    console.warn('Failed to sync all portfolio items to firestore:', err);
+  }
+}
+

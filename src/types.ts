@@ -56,6 +56,8 @@ export interface PortfolioItem {
   features: string[];
   imageUrl: string;
   hasBlueprint?: boolean;
+  order?: number;
+  createdAt?: string;
 }
 
 export interface EquipmentItem {
