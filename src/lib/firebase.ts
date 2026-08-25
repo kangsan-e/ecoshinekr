@@ -156,12 +156,18 @@ export function getLocalPortfolioItems(): PortfolioItem[] {
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.map((item, idx) => ({
-          ...item,
-          imageUrl: (item.imageUrl && item.imageUrl.length > 10) 
-            ? item.imageUrl 
-            : (PORTFOLIO_LIST[idx]?.imageUrl || DEFAULT_FALLBACK_IMAGE)
-        }));
+        return parsed.map((item, idx) => {
+          const defaultImg = PORTFOLIO_LIST[idx]?.imageUrl || DEFAULT_FALLBACK_IMAGE;
+          const isInvalidImage = !item.imageUrl || 
+            item.imageUrl.length < 5 || 
+            item.imageUrl.includes('<svg') || 
+            item.imageUrl.includes('pstatic.net');
+
+          return {
+            ...item,
+            imageUrl: isInvalidImage ? defaultImg : item.imageUrl
+          };
+        });
       }
     }
   } catch {

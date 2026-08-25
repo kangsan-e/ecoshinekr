@@ -131,10 +131,11 @@ export const PortfolioGallery: React.FC<PortfolioGalleryProps> = ({ onOpenBookin
   };
 
   const getItemImage = (item: PortfolioItem) => {
-    if (customImages[item.id] && customImages[item.id].trim().length > 10) {
-      return customImages[item.id];
+    const custom = customImages[item.id];
+    if (custom && custom.trim().length > 10 && !custom.includes('<svg') && !custom.includes('pstatic.net')) {
+      return custom;
     }
-    if (item.imageUrl && item.imageUrl.trim().length > 10) {
+    if (item.imageUrl && item.imageUrl.trim().length > 10 && !item.imageUrl.includes('<svg') && !item.imageUrl.includes('pstatic.net')) {
       return item.imageUrl;
     }
     return FALLBACK_SOLAR_IMAGE;
