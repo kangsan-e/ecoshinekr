@@ -1,3 +1,5 @@
+import { REAL_SOLAR_IMAGE_124KW } from '../data/portfolioImages';
+
 /**
  * Utility to compress and resize images on client-side
  * Ensures high visual quality while keeping size under ~200KB-300KB
@@ -59,5 +61,6 @@ export async function optimizeImageFile(file: File, maxWidth = 1600, maxHeight =
 
 /**
  * Fallback solar panel background if image fails to load
+ * Guaranteed self-contained data URI that works offline and cross-origin
  */
-export const FALLBACK_SOLAR_IMAGE = 'https://images.unsplash.com/photo-1509391365360-2e959784a276?auto=format&fit=crop&w=1200&q=80';
+export const FALLBACK_SOLAR_IMAGE = REAL_SOLAR_IMAGE_124KW;

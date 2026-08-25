@@ -142,11 +142,13 @@ export async function blockSlot(date: string, time: string, reason = '상담 마
   });
 }
 
+import { REAL_SOLAR_IMAGE_124KW } from '../data/portfolioImages';
+
 // ==========================================
 // Portfolio Items Management (Max 6 Items)
 // ==========================================
 export const PORTFOLIO_STORAGE_KEY = 'ecoshine_portfolio_custom_items';
-const DEFAULT_FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1509391365360-2e959784a276?auto=format&fit=crop&w=1600&q=85';
+const DEFAULT_FALLBACK_IMAGE = REAL_SOLAR_IMAGE_124KW;
 
 export function getLocalPortfolioItems(): PortfolioItem[] {
   try {

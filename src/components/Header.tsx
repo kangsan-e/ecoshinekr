@@ -68,10 +68,7 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
               <div>
                 <div className="flex items-baseline gap-1.5 whitespace-nowrap">
-                  <span className="text-xl font-black tracking-tight text-slate-900 whitespace-nowrap">
-                    (주)에코샤인
-                  </span>
-                  <span className="text-xs font-black uppercase tracking-widest text-amber-700">
+                  <span className="text-2xl font-black tracking-wider text-slate-900 whitespace-nowrap">
                     ECOSHINE
                   </span>
                 </div>

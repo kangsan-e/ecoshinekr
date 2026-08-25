@@ -250,7 +250,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
       roofType: '청색 샌드위치 패널 지붕',
       description: '',
       featuresText: '특허 누수방지 브라켓, POS-MAC 고내식 구조물',
-      imageUrl: 'https://images.unsplash.com/photo-1509391365360-2e959784a276?auto=format&fit=crop&w=1600&q=85'
+      imageUrl: FALLBACK_SOLAR_IMAGE
     });
     setPortfolioFormError('');
     setCompressInfo('');

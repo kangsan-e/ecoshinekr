@@ -1,4 +1,5 @@
 import type { PortfolioItem, EquipmentItem } from '../types';
+import { REAL_SOLAR_IMAGE_124KW, REAL_SOLAR_IMAGE_184KW, REAL_SOLAR_IMAGE_284KW } from './portfolioImages';
 
 export const COMPANY_INFO = {
   name: '(주)에코샤인',
@@ -27,7 +28,7 @@ export const PORTFOLIO_LIST: PortfolioItem[] = [
     description: '124.16 kW 단독 공장 샌드위치 패널 지붕 시공',
     roofType: '청색 샌드위치 패널 지붕',
     features: ['특허 누수방지 브라켓', 'POS-MAC 고내식 구조물'],
-    imageUrl: 'https://images.unsplash.com/photo-1509391365360-2e959784a276?auto=format&fit=crop&w=1600&q=85',
+    imageUrl: REAL_SOLAR_IMAGE_124KW,
     hasBlueprint: true
   },
   {
@@ -40,7 +41,7 @@ export const PORTFOLIO_LIST: PortfolioItem[] = [
     description: '184.80 kW 산단 다동 공장 지붕 항공 직하 시공',
     roofType: '칼라강판 및 복합 판넬 지붕',
     features: ['특허 누수방지 브라켓', 'POS-MAC 고내식 구조물'],
-    imageUrl: 'https://images.unsplash.com/photo-1508873696983-2df57046475b?auto=format&fit=crop&w=1600&q=85'
+    imageUrl: REAL_SOLAR_IMAGE_184KW
   },
   {
     id: 'pf-3',
@@ -52,7 +53,7 @@ export const PORTFOLIO_LIST: PortfolioItem[] = [
     description: '284.75 kW A~E 5개동 연동형 지붕 태양광 발전소',
     roofType: '5개동 연동형 박공 판넬',
     features: ['특허 누수방지 브라켓', 'POS-MAC 고내식 구조물'],
-    imageUrl: 'https://images.unsplash.com/photo-1613665813446-82a78c468a1d?auto=format&fit=crop&w=1600&q=85'
+    imageUrl: REAL_SOLAR_IMAGE_284KW
   }
 ];
 
