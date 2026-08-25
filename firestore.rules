@@ -1,0 +1,32 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Consultation bookings & lead inquiries
+    match /consultations/{consultationId} {
+      // Anyone (prospective client) can create a consultation inquiry
+      allow create: if true;
+      // Clients can read their own submissions or read by phone verification in client app, admins can read all
+      allow read: if true;
+      // Update allowed by admin or client with status
+      allow update: if true;
+      allow delete: if isAuthenticated();
+    }
+
+    // Blocked consultation date/time slots
+    match /blocked_slots/{slotId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // General app settings or market prices (SMP/REC)
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "entities": {
+    "consultations": {
+      "title": "Consultation Bookings & Inquiries",
+      "description": "Factory owner solar consultation requests and appointment schedules",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Customer name" },
+        "companyName": { "type": "string", "description": "Factory / Company name" },
+        "phone": { "type": "string", "description": "Contact phone number" },
+        "factoryAddress": { "type": "string", "description": "Factory location address" },
+        "preferredDate": { "type": "string", "description": "Preferred consultation date YYYY-MM-DD" },
+        "preferredTime": { "type": "string", "description": "Preferred consultation time HH:MM" },
+        "consultationType": { "type": "string", "enum": ["call", "visit", "inspection"], "description": "Consultation method" },
+        "roofArea": { "type": "number", "description": "Estimated roof area in m2" },
+        "monthlyElectricityBill": { "type": "number", "description": "Monthly electricity cost in KRW" },
+        "factoryType": { "type": "string", "enum": ["owned", "rented", "etc"], "description": "Factory ownership" },
+        "interest": { "type": "string", "description": "Primary interest area" },
+        "notes": { "type": "string", "description": "Additional customer notes" },
+        "status": { "type": "string", "enum": ["new", "contacted", "scheduled", "quoted", "contracted", "completed", "cancelled"], "description": "Booking status" },
+        "adminNotes": { "type": "string", "description": "Staff internal sales note" },
+        "clientPin": { "type": "string", "description": "4-digit query PIN for non-member lookup" },
+        "userId": { "type": "string", "description": "Optional authenticated user UID" },
+        "userEmail": { "type": "string", "description": "Optional user email" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "companyName", "phone", "factoryAddress", "preferredDate", "preferredTime", "consultationType"]
+    },
+    "blocked_slots": {
+      "title": "Blocked Appointment Slots",
+      "description": "Dates and times unavailable for consultation bookings",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "reason": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["date", "time"]
+    }
+  }
+}
